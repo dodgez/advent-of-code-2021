@@ -1,10 +1,15 @@
 module Lib where
 
+import Data.Char
+import Data.Functor
+
+import Debug.Trace
+
 getInput :: String -> IO [String]
-getInput file = readFile ("./src/inputs/" ++ file) >>= return.lines
+getInput file = readFile ("./src/inputs/" ++ file) <&> lines
 
 getDay1Input :: IO [Int]
-getDay1Input = getInput "day1.txt" >>= return.(map read)
+getDay1Input = getInput "day1.txt" <&> map read
 
 day1 :: IO Int
 day1 = do
@@ -35,7 +40,7 @@ day1Part2 = do
 -- >>> day1Part2
 
 getDay2Input :: IO [(String, Int)]
-getDay2Input = getInput "day2.txt" >>= return.(map words) >>= return.(map (\[dir, n] -> (dir, read n :: Int)))
+getDay2Input = getInput "day2.txt" <&> map words <&> map (\[dir, n] -> (dir, read n :: Int))
 
 command :: (Int, Int) -> (String, Int) -> (Int, Int)
 command (h, v) ("forward", n) = (h + n, v)
@@ -63,8 +68,56 @@ day2Part2 = do
 
 -- >>> day2Part2
 
+getDay3Input :: IO [[Int]]
+getDay3Input = getInput "day3.txt" <&> map (map digitToInt)
+
+fromBinary :: [Int] -> Int
+fromBinary [] = 0
+fromBinary (x:xs) = x * (2 ^ length xs) + fromBinary xs
+
+notBinary :: [Int] -> [Int]
+notBinary [] = []
+notBinary (x:xs) = (1 - x) : notBinary xs
+
+range :: Int -> [Int]
+range n = take n [0..]
+
+sumLists :: [[Int]] -> [Int]
+sumLists xs = map sum $ map (\i -> map (!! i) xs) $ range $ length $ xs !! 0
+
+findMostDigit :: Int -> [Int] -> [Int]
+findMostDigit _ [] = []
+findMostDigit n (x:xs) = (if x <= n `div` 2 then 0 else 1) : findMostDigit n xs
+
+day3 :: IO Int
+day3 = do
+  diagnostics <- getDay3Input
+  let n = length diagnostics
+  let gamma = findMostDigit n $ sumLists diagnostics
+  return $ fromBinary gamma * (fromBinary $ notBinary gamma)
+
+-- >>> day3
+
+findMostDigitNPlace :: Int -> [[Int]] -> Int
+findMostDigitNPlace i xs = if 2*x >= length xs then 1 else 0 where x = sum $ map (!! i) xs
+
+findLeastDigitNPlace :: Int -> [[Int]] -> Int
+findLeastDigitNPlace i xs = if 2*x < length xs then 1 else 0 where x = sum $ map (!! i) xs
+
+foldListBits :: [[Int]] -> Bool -> [Int]
+foldListBits xs most = head $ foldl (\acc n -> if length acc == 1 then acc else filter (\l -> (l !! n) == ((if most then findMostDigitNPlace else findLeastDigitNPlace) n acc)) acc) xs $ range $ length $ head xs
+
+day3Part2 :: IO Int
+day3Part2 = do
+  diagnostics <- getDay3Input
+  let oxygen = fromBinary $ foldListBits diagnostics True
+  let carbon = fromBinary $ foldListBits diagnostics False
+  return $ oxygen * carbon
+
+-- >>> day3Part2
+
 main :: IO ()
 main = do
-  mapM_ (\f -> f >>= print) [day1, day1Part2, day2, day2Part2]
+  mapM_ (>>= print) [day1, day1Part2, day2, day2Part2, day3, day3Part2]
 
 -- >>> main
